@@ -1,3 +1,4 @@
+# based on [Tusimple implementation]https://github.com/TuSimple/mx-maskrcnn
 # MX Mask R-CNN
 An MXNet implementation of [Mask R-CNN](https://arxiv.org/abs/1703.06870).
 
