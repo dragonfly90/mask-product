@@ -16,8 +16,10 @@ def demo_maskrcnn(network, ctx, prefix, epoch,img_path,
     
     assert has_rpn,"Only has_rpn==True has been supported."
     sym = eval('get_' + network + '_mask_test')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
+    print prefix
     arg_params, aux_params = load_param(prefix, epoch, convert=True, ctx=ctx, process=True)
-    
+    for param in arg_params:
+	print param
     max_image_shape = (1,3,1024,1024)
     max_data_shapes = [("data",max_image_shape),("im_info",(1,3))]
     mod = MutableModule(symbol = sym, data_names = ["data","im_info"], label_names= None,
@@ -54,6 +56,8 @@ def demo_maskrcnn(network, ctx, prefix, epoch,img_path,
     nms = py_nms_wrapper(config.TEST.NMS)
 
     boxes= pred_boxes
+    #print 'pred_boxes'
+    #print boxes
 
     CLASSES  = ('__background__', 'person', 'rider', 'car', 'truck', 'bus', 'train', 'mcycle', 'bicycle')
 
@@ -69,19 +73,23 @@ def demo_maskrcnn(network, ctx, prefix, epoch,img_path,
         cls_boxes = boxes[:, 4 * cls_ind:4 * (cls_ind + 1)]
         cls_masks = mask_output[:, cls_ind, :, :]
         cls_scores = scores[:, cls_ind, np.newaxis]
-        #print cls_scores.shape, label.shape
+        print cls_scores.shape, label.shape
         keep = np.where((cls_scores >= thresh) & (label == cls_ind))[0]
         cls_masks = cls_masks[keep, :, :]
         dets = np.hstack((cls_boxes, cls_scores)).astype(np.float32)[keep, :]
         keep = nms(dets)
-        #print dets.shape, cls_masks.shape
+        print dets.shape, cls_masks.shape
         all_boxes[cls_ind] = dets[keep, :]
         all_masks[cls_ind] = cls_masks[keep, :, :]
 
     boxes_this_image = [[]] + [all_boxes[j] for j in range(1, len(CLASSES))]
     masks_this_image = [[]] + [all_masks[j] for j in range(1, len(CLASSES))]
-
-
+    print 'boxes: ', len(boxes_this_image)
+    print 'masks: ', len(masks_this_image)
+    print 'boxes'
+    print boxes_this_image
+    print 'masks'
+    print masks_this_image
     import copy
     import random
     class_names = CLASSES
@@ -114,12 +122,14 @@ def demo_maskrcnn(network, ctx, prefix, epoch,img_path,
             target[target >= 255] = 255
             im[bbox[1]: bbox[3], bbox[0]: bbox[2], c] = target
     im = im[:,:,(2,1,0)]
+    print im.shape
     plt.imshow(im)
-
+    vis = 1
     if vis:
         plt.show()
     else:
         plt.savefig("figures/test_result.jpg")
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
     # general
@@ -144,7 +154,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    ctx = mx.gpu(args.gpu)
+    #ctx = mx.gpu(args.gpu)
+    ctx = mx.cpu()
     print args
     demo_maskrcnn(network = args.network, 
                   ctx = ctx,
@@ -153,7 +164,7 @@ def main():
                   img_path = args.image_name,
                   vis= args.vis, 
                   has_rpn = True,
-                  thresh = args.thresh)
+                  thresh = 0.001)
 
 if __name__ == '__main__':
     main()
